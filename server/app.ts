@@ -3,11 +3,20 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { expensesRoute } from "./routes/expenses";
 import { cors } from "hono/cors";
+import { authRoute } from './auth/kinde'
+import { secureRoute } from './routes/secure'
 
 export const app = new Hono();
 
 // Global logger (from Lab 1)
 app.use("*", logger());
+
+app.route('/api/auth', authRoute)
+
+// server/app.ts
+
+app.route('/api/secure', secureRoute)
+
 
 app.use(
   "/api/*",
