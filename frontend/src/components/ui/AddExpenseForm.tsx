@@ -1,40 +1,43 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
+import { api } from '../../lib/api'
 
-export function AddExpenseForm() {
-  const qc = useQueryClient()
+export function AddExpenseForm({ onAdded }: { onAdded?: () => void }) {
   const [title, setTitle] = useState('')
   const [amount, setAmount] = useState<number | ''>('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const mutation = useMutation({
-    mutationFn: async (payload: { title: string; amount: number }) => {
-      const res = await fetch('http://localhost:3000/api/expenses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) throw new Error('Failed to add')
-      return res.json()
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['expenses'] })
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title || typeof amount !== 'number') return
+    setSubmitting(true)
+    setError(null)
+    try {
+      await api.createExpense({ title, amount })
       setTitle('')
       setAmount('')
+      onAdded?.()
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to add expense')
+    } finally {
+      setSubmitting(false)
     }
-  })
+  }
 
   return (
-    <form onSubmit={e => {
-      e.preventDefault()
-      if (title && typeof amount === 'number') {
-        mutation.mutate({ title, amount })
-      }
-    }} className="flex gap-2 mt-4">
-      <input className="border p-2" value={title} onChange={e => setTitle(e.target.value)} placeholder="Title" />
-      <input className="border p-2" type="number" value={amount} onChange={e => setAmount(e.target.value === '' ? '' : Number(e.target.value))} placeholder="Amount" />
-      <button className="bg-black text-white px-3 py-1 rounded" disabled={mutation.isPending}>
-        {mutation.isPending ? 'Adding…' : 'Add'}
+    <form onSubmit={onSubmit} className="mt-6 flex gap-2">
+      <input className="w-1/2 rounded border p-2" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <input
+        className="w-40 rounded border p-2"
+        type="number"
+        placeholder="Amount"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value === '' ? '' : Number(e.target.value))}
+      />
+      <button className="rounded bg-black px-4 py-2 text-white disabled:opacity-50" disabled={submitting}>
+        {submitting ? 'Adding…' : 'Add'}
       </button>
+      {error && <span className="text-sm text-red-600">{error}</span>}
     </form>
   )
 }
