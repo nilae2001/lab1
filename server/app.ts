@@ -5,6 +5,7 @@ import { expensesRoute } from "./routes/expenses";
 import { cors } from "hono/cors";
 import { authRoute } from './auth/kinde'
 import { secureRoute } from './routes/secure'
+import { uploadRoute } from './routes/upload'
 
 export const app = new Hono();
 
@@ -12,6 +13,8 @@ export const app = new Hono();
 app.use("*", logger());
 
 app.route('/api/auth', authRoute)
+
+app.route('/api/upload', uploadRoute)
 
 // server/app.ts
 
