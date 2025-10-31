@@ -6,10 +6,20 @@ import { cors } from "hono/cors";
 import { authRoute } from './auth/kinde'
 import { secureRoute } from './routes/secure'
 import { uploadRoute } from './routes/upload'
+import { serveStatic } from "hono/serve-static";
 
 export const app = new Hono();
 
 // Global logger (from Lab 1)
+app.use(
+  '/*',
+  serveStatic({
+    root: './server/public',
+    getContent: async (path) => Bun.file(`./server/public${path}`).arrayBuffer(),
+  })
+)
+
+
 app.use("*", logger());
 
 app.route('/api/auth', authRoute)
@@ -46,3 +56,13 @@ app.get("/health", (c) => c.json({ status: "healthy" }));
 
 // Mount API routes
 app.route("/api/expenses", expensesRoute);
+
+app.get('*', async (c, next) => {
+  const url = new URL(c.req.url)
+  if (url.pathname.startsWith('/api')) return next()
+  // serve index.html
+  return c.html(await Bun.file('./server/public/index.html').text())
+
+})
+
+export default app
