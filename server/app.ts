@@ -61,7 +61,7 @@ app.get('*', async (c, next) => {
   const url = new URL(c.req.url)
   if (url.pathname.startsWith('/api')) return next()
   // serve index.html
-  return c.html(await Bun.file('./server/public/index.html').text())
+  return c.html(await Bun.file(`./server/public${url.pathname}`).text())
 
 })
 
