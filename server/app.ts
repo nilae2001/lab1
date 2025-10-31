@@ -2,7 +2,6 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { cors } from "hono/cors";
-import { serveStatic } from "hono/serve-static";
 
 import { expensesRoute } from "./routes/expenses";
 import { authRoute } from "./auth/kinde";
@@ -14,11 +13,8 @@ export const app = new Hono();
 // --------------------
 // Middleware
 // --------------------
-
-// Logger for all requests
 app.use("*", logger());
 
-// Custom timing middleware
 app.use("*", async (c, next) => {
   const start = Date.now();
   await next();
@@ -30,7 +26,11 @@ app.use("*", async (c, next) => {
 app.use(
   "/api/*",
   cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173, https://lab1-zhv8.onrender.com/"],
+    origin: [
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "https://lab1-zhv8.onrender.com"
+    ],
     allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     credentials: true,
@@ -46,38 +46,68 @@ app.route("/api/secure", secureRoute);
 app.route("/api/expenses", expensesRoute);
 
 // --------------------
-// Health check & root
+// Health check
 // --------------------
-app.get("/", (c) => c.json({ message: "OK" }));
 app.get("/health", (c) => c.json({ status: "healthy" }));
 
 // --------------------
-// Static frontend files
+// Static file serving with proper MIME types
 // --------------------
-app.use(
-  "/*",
-  serveStatic({
-    root: "./server/public",
-    getContent: async (path, c) => {
-      try {
-        const cleanPath = path.startsWith("/") ? path.slice(1) : path;
-        return await Bun.file(`./server/public/${cleanPath}`).arrayBuffer();
-      } catch {
-        return null;
-      }
-    },
-  })
-);
-
-// --------------------
-// SPA fallback for frontend routing
-// --------------------
-app.get("*", async (c, next) => {
-  if (c.req.url.startsWith("/api")) return next();
+app.get("*", async (c) => {
+  const path = c.req.path;
+  
+  // Skip API routes
+  if (path.startsWith("/api")) {
+    return c.notFound();
+  }
+  
   try {
-    return c.html(await Bun.file("./server/public/index.html").text());
-  } catch {
+    // Determine file path
+    let filePath = path === "/" ? "/index.html" : path;
+    const fullPath = `./server/public${filePath}`;
+    
+    console.log(`Attempting to serve: ${fullPath}`);
+    
+    const file = Bun.file(fullPath);
+    const exists = await file.exists();
+    
+    if (exists) {
+      // Set proper Content-Type based on file extension
+      const ext = filePath.split(".").pop()?.toLowerCase();
+      const mimeTypes: Record<string, string> = {
+        html: "text/html; charset=utf-8",
+        css: "text/css; charset=utf-8",
+        js: "application/javascript; charset=utf-8",
+        json: "application/json; charset=utf-8",
+        png: "image/png",
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        svg: "image/svg+xml",
+        ico: "image/x-icon",
+        woff: "font/woff",
+        woff2: "font/woff2",
+        ttf: "font/ttf",
+      };
+      
+      const contentType = mimeTypes[ext || ""] || "application/octet-stream";
+      c.header("Content-Type", contentType);
+      
+      return c.body(await file.arrayBuffer());
+    }
+    
+    // SPA fallback - serve index.html for client-side routes
+    console.log(`File not found, serving index.html as SPA fallback`);
+    const indexFile = Bun.file("./server/public/index.html");
+    
+    if (await indexFile.exists()) {
+      c.header("Content-Type", "text/html; charset=utf-8");
+      return c.body(await indexFile.arrayBuffer());
+    }
+    
     return c.text("Not found", 404);
+  } catch (error) {
+    console.error("Error serving file:", error);
+    return c.text("Internal server error", 500);
   }
 });
 
