@@ -4,7 +4,7 @@ import type { Context } from 'hono'
 import type { SessionManager } from '@kinde-oss/kinde-typescript-sdk'
 import { createKindeServerClient, GrantType } from '@kinde-oss/kinde-typescript-sdk'
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173'
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://lab1-zhv8.onrender.com/'
 
 export const kindeClient = createKindeServerClient(GrantType.AUTHORIZATION_CODE, {
   authDomain: process.env.KINDE_ISSUER_URL!,
