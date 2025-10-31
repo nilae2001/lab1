@@ -3,7 +3,7 @@ FROM oven/bun:1 as base
 WORKDIR /app
 
 # Install dependencies
-COPY frontend/package.json frontend/bun.lockb ./
+COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
 # Build frontend
