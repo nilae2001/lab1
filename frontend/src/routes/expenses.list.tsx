@@ -9,7 +9,7 @@ export type Expense = {
   fileUrl?: string | null;
 };
 
-const API = "http://localhost:3000/api";
+const API = "/api";
 
 export default function ExpensesListPage() {
   const qc = useQueryClient();
