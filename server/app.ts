@@ -18,17 +18,6 @@ export const app = new Hono()
 // Logger for all requests
 app.use("*", logger())
 
-// CORS for API routes
-app.use(
-  "/api/*",
-  cors({
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
-    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-)
-
 // Custom timing middleware
 app.use("*", async (c, next) => {
   const start = Date.now()
@@ -37,23 +26,14 @@ app.use("*", async (c, next) => {
   c.header("X-Response-Time", `${ms}ms`)
 })
 
-// --------------------
-// Static frontend files
-// --------------------
-
-// Serve static files from server/public
+// CORS for API routes
 app.use(
-  "/*",
-  serveStatic({
-    root: "./server/public",
-    getContent: async (path, c) => {
-      try {
-        const file = Bun.file(`./server/public${path}`)
-        return file ? await file.arrayBuffer() : null
-      } catch {
-        return null
-      }
-    },
+  "/api/*",
+  cors({
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 )
 
@@ -72,14 +52,28 @@ app.get("/", (c) => c.json({ message: "OK" }))
 app.get("/health", (c) => c.json({ status: "healthy" }))
 
 // --------------------
+// Static frontend files
+// --------------------
+app.use(
+  "/*",
+  serveStatic({
+    root: "./server/public",
+    getContent: async (path, c) => {
+      try {
+        return await Bun.file(`./server/public${path}`).arrayBuffer()
+      } catch {
+        return null
+      }
+    },
+  })
+)
+
+// --------------------
 // SPA fallback for frontend routing
 // --------------------
 app.get("*", async (c, next) => {
-  const url = new URL(c.req.url)
-  if (url.pathname.startsWith("/api")) return next()
-
+  if (c.req.url.startsWith("/api")) return next()
   try {
-    // Always serve index.html for SPA routes
     return c.html(await Bun.file("./server/public/index.html").text())
   } catch {
     return c.text("Not found", 404)
